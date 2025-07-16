@@ -6,4 +6,4 @@ class Item(BaseModel):
     id: Optional[int] = None
     name: str
     description: Optional[str] = None
-    price: float 
+    price: float

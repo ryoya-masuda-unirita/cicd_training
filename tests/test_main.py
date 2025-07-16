@@ -58,4 +58,4 @@ def test_get_item():
 def test_get_non_existent_item():
     """存在しないアイテムの取得テスト"""
     response = client.get("/items/9999")
-    assert response.status_code == 404 
+    assert response.status_code == 404

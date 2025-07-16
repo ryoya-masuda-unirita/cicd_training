@@ -36,4 +36,4 @@ def create_item(item: Item):
     current_id += 1
     item.id = current_id
     items[current_id] = item
-    return item 
+    return item
