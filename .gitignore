@@ -31,31 +31,15 @@ ENV/
 *.swp
 *.swo
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
+# Testing
 .coverage
-.coverage.*
-.cache
-nosetests.xml
 coverage.xml
-*.cover
-.hypothesis/
+.pytest_cache/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Environment variables
+# Local development
 .env
 .env.local
-.env.*.local
+*.log
 
-# Docker
-.docker/
-
-# Operating System
-.DS_Store
-Thumbs.db 
-
-# Windows WSL
-*:Zone.Identifier 
+# Azure credentials
+azure_credentials.md 

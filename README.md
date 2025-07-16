@@ -111,7 +111,7 @@ docker run -p 8000:8000 cicd-training
 ## 7. Azureリソースの構築
 ### 7.1 コンテナ関連
 - Azure Container Registryの作成と設定
-- Azure App Serviceの設定
+- Azure Container Appsの設定
 
 ### 7.2 モニタリング関連
 - Application Insightsの設定
