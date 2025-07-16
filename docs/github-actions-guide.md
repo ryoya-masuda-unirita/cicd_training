@@ -44,6 +44,31 @@ GitHub Actionsは、ソフトウェア開発の作業を自動化するための
    - ジョブの中の細かい作業手順
    - 例：「Pythonをインストール」「テストを実行」など
 
+4. **uses**
+   - 他の人が作った便利な機能（アクション）を使うためのキーワード
+   - 例：`uses: actions/checkout@v4`は、GitHubのコードを取得するアクション
+   - `@v4`のような部分は、アクションのバージョンを指定
+   ```yaml
+   steps:
+     - name: コードを取得
+       uses: actions/checkout@v4    # GitHubのコードを取得
+     
+     - name: Nodeをセットアップ
+       uses: actions/setup-node@v4  # Node.jsを準備
+   ```
+
+5. **with**
+   - usesで指定したアクションに設定を渡すためのキーワード
+   - アクションごとに設定できる項目が決まっている
+   ```yaml
+   steps:
+     - name: Pythonをセットアップ
+       uses: actions/setup-python@v5
+       with:
+         python-version: '3.10'    # Pythonのバージョンを指定
+         architecture: 'x64'       # システムのアーキテクチャを指定
+   ```
+
 ## 具体例で学ぶ
 
 ### 例1：簡単なテストの自動化
