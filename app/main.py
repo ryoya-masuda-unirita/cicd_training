@@ -8,15 +8,18 @@ app = FastAPI(title="CI/CD Learning API")
 items: Dict[int, Item] = {}
 current_id: int = 0
 
+
 @app.get("/health")
 def health_check():
     """ヘルスチェックエンドポイント"""
     return {"status": "healthy"}
 
+
 @app.get("/items", response_model=List[Item])
 def get_items():
     """全アイテムを取得"""
     return list(items.values())
+
 
 @app.get("/items/{item_id}", response_model=Item)
 def get_item(item_id: int):
@@ -24,6 +27,7 @@ def get_item(item_id: int):
     if item_id not in items:
         raise HTTPException(status_code=404, detail="Item not found")
     return items[item_id]
+
 
 @app.post("/items", response_model=Item)
 def create_item(item: Item):

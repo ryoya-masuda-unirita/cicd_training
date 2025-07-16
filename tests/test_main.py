@@ -3,11 +3,13 @@ from app.main import app
 
 client = TestClient(app)
 
+
 def test_health_check():
     """ヘルスチェックエンドポイントのテスト"""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
+
 
 def test_create_item():
     """アイテム作成エンドポイントのテスト"""
@@ -24,11 +26,13 @@ def test_create_item():
     assert data["price"] == item_data["price"]
     assert "id" in data
 
+
 def test_get_items():
     """アイテム一覧取得エンドポイントのテスト"""
     response = client.get("/items")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
 
 def test_get_item():
     """個別アイテム取得エンドポイントのテスト"""
@@ -49,6 +53,7 @@ def test_get_item():
     assert data["name"] == item_data["name"]
     assert data["description"] == item_data["description"]
     assert data["price"] == item_data["price"]
+
 
 def test_get_non_existent_item():
     """存在しないアイテムの取得テスト"""
