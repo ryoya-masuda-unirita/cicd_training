@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AZURE_CONTAINER_REGISTRY: acrcicddev20240320
   CONTAINER_NAME: python-app
