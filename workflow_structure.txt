@@ -1,0 +1,120 @@
+ｂworkflow = {
+    "name": "Deploy to Azure",
+    
+    "on": {
+        "push": {
+            "branches": ["main"]
+        },
+        "workflow_dispatch": None  # 手動トリガーを許可
+    },
+    
+    "permissions": {
+        "id-token": "write",  # OIDCフェデレーション認証用
+        "contents": "read"
+    },
+    
+    "env": {  # 環境変数の定義
+        "AZURE_CONTAINER_REGISTRY": "acrcicddev20240320",
+        "CONTAINER_NAME": "python-app",
+        "RESOURCE_GROUP": "rg-cicd-dev-japaneast",
+        "CONTAINER_APP_NAME": "aca-cicd-dev"
+    },
+    
+    "jobs": {
+        "test": {  # テストジョブ
+            "runs-on": "ubuntu-latest",
+            "steps": [
+                {
+                    "uses": "actions/checkout@v4"  # リポジトリのチェックアウト
+                },
+                {
+                    "name": "Set up Python",
+                    "uses": "actions/setup-python@v5",
+                    "with": {
+                        "python-version": "3.10"
+                    }
+                },
+                {
+                    "name": "Install dependencies",
+                    "run": """
+                        python -m pip install --upgrade pip
+                        pip install -r requirements.txt
+                    """
+                },
+                {
+                    "name": "Lint with flake8",
+                    "run": "flake8 app tests"
+                },
+                {
+                    "name": "Run tests with pytest",
+                    "run": "pytest --cov=app tests/ --cov-report=xml"
+                },
+                {
+                    "name": "Upload coverage reports to Codecov",
+                    "uses": "codecov/codecov-action@v4",
+                    "with": {
+                        "token": "${{ secrets.CODECOV_TOKEN }}",
+                        "file": "./coverage.xml",
+                        "fail_ci_if_error": True
+                    }
+                }
+            ]
+        },
+        
+        "build-and-deploy": {  # ビルド＆デプロイジョブ
+            "needs": "test",  # テストジョブの成功が前提
+            "runs-on": "ubuntu-latest",
+            "steps": [
+                {
+                    "uses": "actions/checkout@v4"
+                },
+                {
+                    "name": "Set up Docker Buildx",
+                    "uses": "docker/setup-buildx-action@v3"
+                },
+                {
+                    "name": "Log in to Azure",
+                    "uses": "azure/login@v2",
+                    "with": {
+                        "client-id": "${{ secrets.AZURE_CLIENT_ID }}",
+                        "tenant-id": "${{ secrets.AZURE_TENANT_ID }}",
+                        "subscription-id": "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+                    }
+                },
+                {
+                    "name": "Log in to Azure Container Registry",
+                    "run": "az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}"
+                },
+                {
+                    "name": "Build and push container image to registry",
+                    "uses": "docker/build-push-action@v5",
+                    "with": {
+                        "push": True,
+                        "tags": "${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}",
+                        "file": "./Dockerfile",
+                        "context": "."
+                    }
+                },
+                {
+                    "name": "Deploy to Azure Container Apps",
+                    "uses": "azure/container-apps-deploy-action@v1",
+                    "with": {
+                        "resourceGroup": "${{ env.RESOURCE_GROUP }}",
+                        "containerAppName": "${{ env.CONTAINER_APP_NAME }}",
+                        "imageToDeploy": "${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}",
+                        "targetPort": 8000
+                    }
+                }
+            ]
+        }
+    }
+}
+
+# ワークフローの主な特徴：
+# 1. トリガー: mainブランチへのプッシュ or 手動実行
+# 2. 認証: OIDCフェデレーション認証（id-token: write）
+# 3. ジョブ構成:
+#    - test: Pythonテスト環境のセットアップ、テスト実行、カバレッジレポート
+#    - build-and-deploy: Dockerビルド、ACRプッシュ、Container Appsデプロイ
+# 4. 環境変数: Azure リソース名を集中管理
+# 5. シークレット利用: CODECOV_TOKEN, Azure認証情報 

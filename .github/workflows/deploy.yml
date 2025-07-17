@@ -1,44 +1,57 @@
+# ワークフロー名：Azure Container Appsへのデプロイを行う
 name: Deploy to Azure
 
+# トリガー設定：いつこのワークフローを実行するか
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main ]  # mainブランチへのプッシュ時に実行
+  workflow_dispatch:    # 手動実行も許可
 
+# 必要な権限設定
 permissions:
-  id-token: write
-  contents: read
+  id-token: write      # OIDCトークン生成のための権限
+  contents: read       # リポジトリコンテンツの読み取り権限
 
+# 環境変数の定義：Azure リソース名など
 env:
-  AZURE_CONTAINER_REGISTRY: acrcicddev20240320
-  CONTAINER_NAME: python-app
-  RESOURCE_GROUP: rg-cicd-dev-japaneast
-  CONTAINER_APP_NAME: aca-cicd-dev
+  AZURE_CONTAINER_REGISTRY: acrcicddev20240320    # ACRの名前
+  CONTAINER_NAME: python-app                      # コンテナイメージ名
+  RESOURCE_GROUP: rg-cicd-dev-japaneast          # リソースグループ名
+  CONTAINER_APP_NAME: aca-cicd-dev               # Container Apps名
 
+# ジョブの定義
 jobs:
+  # テストジョブ：コードの品質チェックとテスト実行
   test:
+    # [skip ci]がコミットメッセージに含まれている場合は全てスキップ
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4    # リポジトリのチェックアウト
 
+    # Python環境のセットアップ
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
+    # 依存パッケージのインストール
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # コードスタイルチェック
     - name: Lint with flake8
       run: |
         flake8 app tests
 
+    # ユニットテストとカバレッジ計測
     - name: Run tests with pytest
       run: |
         pytest --cov=app tests/ --cov-report=xml
 
+    # Codecovへのカバレッジレポートアップロード
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
       with:
@@ -46,16 +59,21 @@ jobs:
         file: ./coverage.xml
         fail_ci_if_error: true
 
+  # ビルド＆デプロイジョブ：コンテナのビルドとAzureへのデプロイ
   build-and-deploy:
-    needs: test    # テストジョブの成功を前提条件とする
+    # [skip ci]または[skip deploy]がコミットメッセージに含まれている場合はスキップ
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip deploy]')"
+    needs: test    # テストジョブが成功した場合のみ実行
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4    # リポジトリのチェックアウト
 
+    # Dockerビルド環境のセットアップ
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    # Azureへのログイン（OIDCフェデレーション認証使用）
     - name: Log in to Azure
       uses: azure/login@v2
       with:
@@ -63,22 +81,25 @@ jobs:
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+    # Azure Container Registryへのログイン
     - name: Log in to Azure Container Registry
       run: |
         az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
 
+    # Dockerイメージのビルドとプッシュ
     - name: Build and push container image to registry
       uses: docker/build-push-action@v5
       with:
-        push: true
-        tags: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
+        push: true    # イメージをプッシュする
+        tags: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}  # タグにコミットハッシュを使用
         file: ./Dockerfile
         context: .
 
+    # Azure Container Appsへのデプロイ
     - name: Deploy to Azure Container Apps
       uses: azure/container-apps-deploy-action@v1
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.CONTAINER_APP_NAME }}
         imageToDeploy: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.CONTAINER_NAME }}:${{ github.sha }}
-        targetPort: 8000 
+        targetPort: 8000    # アプリケーションの待ち受けポート 
